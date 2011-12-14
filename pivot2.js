@@ -70,6 +70,7 @@ var gvizpivot = {};
  */
 
 gvizpivot.PivotAgg = function(dataTable, opts) {
+
   this.dataTable_ = dataTable;
   this.options_ = opts;
   this.keyColumnIndexMap_ = {};
@@ -77,6 +78,7 @@ gvizpivot.PivotAgg = function(dataTable, opts) {
   this.rowAggregationMap_ = {};
   this.model = {};
   this.parseOptions_();
+
   this.outputTable_ = new google.visualization.DataTable();
   this.performPivotConversion_();
 };
@@ -115,22 +117,28 @@ gvizpivot.PivotAgg.prototype.performPivotConversion_ = function() {
            'must be provided');
   }
 
-  // these are the core operations
+  // core operations
   this.addKeyColumns_();
   this.addColumnColumns_();
   this.buildModel_();
   this.writeTableFromModel_();
-
-  // these may or may not happen based on user settings
+  // based on user settings
+  if (this.summaryColumns_) {
+      if (this.summaryColumns_[0].applyOrder == 'before') {
+        this.addAggregationColumn_();
+      }
+  }
   if (this.usePercentTotalValues_) {
     this.convertColumnsToPercentOfTotal_();
   }
   if (this.columnColumn_.formatters) {
     this.applyFormattingToColumns_(this.columnColumn_.formatters,
-                                   this.getColumnIndexesArray_());
+                                   this.getColumnIndexesArray());
   }
   if (this.summaryColumns_) {
-    this.addAggregationColumn_();
+      if (this.summaryColumns_[0].applyOrder != 'before') {
+        this.addAggregationColumn_();
+      }
   }
 };
 
@@ -143,6 +151,7 @@ gvizpivot.PivotAgg.prototype.performPivotConversion_ = function() {
 gvizpivot.PivotAgg.prototype.addKeyColumns_ = function() {
   for (var i = 0; i < this.keyColumns_.length; i++) {
     var col = this.keyColumns_[i].column;
+    console.log(col);
     this.keyColumnIndexMap_[col] = this.outputTable_.addColumn(
        this.dataTable_.getColumnType(col),
        this.dataTable_.getColumnLabel(col));
@@ -172,8 +181,10 @@ gvizpivot.PivotAgg.prototype.addColumnColumns_ = function() {
       newColTitle = this.columnColumn_['columnTitleModifier'](distinct[i]);
     }
     // holds for example, 'Marketing' => 5
-    this.columnColumn_IndexMap_[String(distinct[i])] =
-        this.outputTable_.addColumn(type, newColTitle);
+    if (!this.columnColumn_IndexMap_[String(newColTitle)]) {
+      this.columnColumn_IndexMap_[String(newColTitle)] =
+          this.outputTable_.addColumn(type, newColTitle);
+    }
   }
 };
 
@@ -254,6 +265,9 @@ gvizpivot.PivotAgg.prototype.buildModel_ = function() {
     var columnEntry = this.dataTable_.getValue(
         i,
         this.columnColumn_['column']);
+    if (this.columnColumn_['columnTitleModifier']) {
+      columnEntry = this.columnColumn_['columnTitleModifier'](columnEntry);
+    }
     var value = this.dataTable_.getValue(i, this.valueColumn_['column']);
     var columnIndex = this.columnColumn_IndexMap_[String(columnEntry)];
     var rowIndex = keysMap[keyArray];
@@ -284,16 +298,18 @@ gvizpivot.PivotAgg.prototype.writeTableFromModel_ = function() {
         resultValue);
      }
      this.rowAggregationMap_[rowIndex].push(resultValue);
+    if (this.outputTable_.getValue(Number(rowIndex), 1) == 'Risk review queries') {
+      this.outputTable_.getValue(Number(rowIndex), 2);
+    }
    }
 };
 
 /**
  * Get an array of column indexes added as generated column.
  *
- * @private
  * @return {Array.<number>} An array of columnColumn generated indexes.
  */
-gvizpivot.PivotAgg.prototype.getColumnIndexesArray_ = function() {
+gvizpivot.PivotAgg.prototype.getColumnIndexesArray = function() {
   // generate a list of columns
   if (this.columnIndexesArray != undefined) {
     return this.columnIndexesArray;
@@ -313,7 +329,7 @@ gvizpivot.PivotAgg.prototype.getColumnIndexesArray_ = function() {
  */
 gvizpivot.PivotAgg.prototype.addAggregationColumn_ = function() {
   // add an aggregation column, at the end
-  var cols = this.getColumnIndexesArray_();
+  var cols = this.getColumnIndexesArray();
   for (var k = 0; k < this.summaryColumns_.length; k++) {
     var aggregationColumn = this.outputTable_.addColumn(
       'number',
@@ -363,10 +379,10 @@ gvizpivot.PivotAgg.prototype.applyFormattingToColumns_ = function(
  * @private
  */
 gvizpivot.PivotAgg.prototype.convertColumnsToPercentOfTotal_ = function() {
-  var cols = this.getColumnIndexesArray_();
-  if (this.options_.usePercentTotalValues == true) {
+  var cols = this.getColumnIndexesArray();
+  if (this.options_.usePercentTotalValues == 'col') {
     for (var i = 0; i < cols.length; i++) {
-      var newVals = gvizpivot.utils.getPercentTotalArray(
+      var newVals = gvizpivot.utils.getColumnPercentTotalArray(
           this.outputTable_,
           cols[i]);
       for (var j = 0; j < newVals.length; j++) {
@@ -375,8 +391,59 @@ gvizpivot.PivotAgg.prototype.convertColumnsToPercentOfTotal_ = function() {
             Math.round(newVals[j] * 10000) / 100);
       }
     }
+  } else if (this.options_.usePercentTotalValues == 'row') {
+      var rows = this.outputTable_.getNumberOfRows();
+      for (var i = 0; i < rows; i++) {
+        var newVals = gvizpivot.utils.getRowPercentTotalArray(
+            this.outputTable_,
+            i,
+            cols);
+        for (var j = 0; j < cols.length; j++) {
+          this.outputTable_.setValue(
+              i, cols[j],
+              Math.round(newVals[j] * 10000) / 100);
+        }
+      }
   }
 };
+
+/**
+ * Get an array of column totals.
+ *
+ * @return {Array.<number>} An array of column totals.
+ */
+gvizpivot.PivotAgg.prototype.getGeneratedColumnsTotals = function() {
+  var cols = this.getColumnIndexesArray();
+  var r = [];
+  for (var i = 0; i < cols.length; i++) {
+    var newVals = gvizpivot.utils.getColumnEntries(this.outputTable_, cols[i]);
+    r.push(google.visualization.data.sum(newVals));
+  }
+  return r;
+};
+
+/**
+ * Get an array of column statuses.
+ */
+gvizpivot.PivotAgg.prototype.getColumnStatus = function() {
+  var cols = this.getColumnIndexesArray();
+  var r = {};
+  for (var i = 0; i < cols.length; i++) {
+    r[cols[i]] = {
+      entries: gvizpivot.utils.getColumnEntries(this.outputTable_, cols[i]),
+      label: this.outputTable_.getColumnLabel(cols[i]),
+    };
+  }
+  return r;
+};
+
+/**
+ * Get our underlying pivot table model.
+ */
+gvizpivot.PivotAgg.prototype.getModel = function() {
+  return this.model;
+};
+
 
 /**
  * Namespace for utils.
@@ -388,11 +455,14 @@ gvizpivot.utils = {};
  *
  * @param {google.visualization.DataTable} dataTable Gviz datatable object.
  * @param {number} colIndex Column index we want values for.
+ * @param {number} limit Max number of rows to loop through
  * @return {Array.<number>} Array of values from that column.
  */
-gvizpivot.utils.getColumnEntries = function(dataTable, colIndex) {
+gvizpivot.utils.getColumnEntries = function(dataTable, colIndex, limit) {
   var r = [];
-  for (var m = 0; m < dataTable.getNumberOfRows(); m++) {
+  var limit = limit || dataTable.getNumberOfRows();
+  limit = (limit > dataTable.getNumberOfRows()) ? dataTable.getNumberOfRows() : limit;
+  for (var m = 0; m < limit; m++) {
       r.push(dataTable.getValue(m, colIndex));
   }
   return r;
@@ -418,16 +488,40 @@ gvizpivot.utils.getRowValues = function(dataTable, rowIndex, colIndexes) {
  * Gets values of an column represented as a percent of total of sum of
  * that column.
  *
+ * @param {Array.<number>} Array of numbers.
+ * @return {Array.<number>} Array of values representing % of total.
+ */
+gvizpivot.utils.getPercentTotalArray = function(arr) {
+  var sumOfCol = google.visualization.data.sum(arr);
+  var res = [];
+  for (var k = 0; k < arr.length; k++) {
+    res.push(arr[k] / sumOfCol);
+  }
+  return res;
+};
+
+/**
+ * Gets values of a column represented as a percent of total of sum of
+ * that column.
+ *
  * @param {google.visualization.DataTable} dataTable Gviz datatable object.
  * @param {number} colIndex Row index we want values for.
  * @return {Array.<number>} Array of values representing % of total.
  */
-gvizpivot.utils.getPercentTotalArray = function(dataTable, colIndex) {
+gvizpivot.utils.getColumnPercentTotalArray = function(dataTable, colIndex) {
   var colValues = gvizpivot.utils.getColumnEntries(dataTable, colIndex);
-  var sumOfCol = google.visualization.data.sum(colValues);
-  var res = [];
-  for (var k = 0; k < colValues.length; k++) {
-    res.push(colValues[k] / sumOfCol);
-  }
-  return res;
+  return gvizpivot.utils.getPercentTotalArray(colValues);
+};
+
+/**
+ * Gets values of an column represented as a percent of total of sum of
+ * that row.
+ *
+ * @param {google.visualization.DataTable} dataTable Gviz datatable object.
+ * @param {number} colIndex Row index we want values for.
+ * @return {Array.<number>} Array of values representing % of total.
+ */
+gvizpivot.utils.getRowPercentTotalArray = function(dataTable, rowIndex, colIndexes) {
+  var rowValues = gvizpivot.utils.getRowValues(dataTable, rowIndex, colIndexes);
+  return gvizpivot.utils.getPercentTotalArray(rowValues);
 };
