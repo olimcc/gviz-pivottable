@@ -151,7 +151,6 @@ gvizpivot.PivotAgg.prototype.performPivotConversion_ = function() {
 gvizpivot.PivotAgg.prototype.addKeyColumns_ = function() {
   for (var i = 0; i < this.keyColumns_.length; i++) {
     var col = this.keyColumns_[i].column;
-    console.log(col);
     this.keyColumnIndexMap_[col] = this.outputTable_.addColumn(
        this.dataTable_.getColumnType(col),
        this.dataTable_.getColumnLabel(col));

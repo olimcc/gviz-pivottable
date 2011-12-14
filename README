@@ -4,13 +4,16 @@ Author:
 Description:
   Simple pivoting functionality for a gviz datatable.
 
-Sample usage:
-var pivot = new gvizpivot.PivotAgg(
-  gviz_table, // a normal gviz datatable
-  {pivotKeyIndexes: [{column: 2}],
-   pivotColumnIndex: {column: 0,
-                      aggregator: google.visualization.data.sum},
-   pivotValueIndex: {column:3},
-   summaryColumns: [{label: 'Total',
-                     aggregator: google.visualization.data.sum}]});
-var tbl = pivot.getDataTable();
+Sample usage: 
+ 
+  var simple_pivot = new gvizpivot.PivotAgg(
+    gviz_table, // standard gviz data table
+    {pivotColumnIndex: {
+       column: 0,
+       aggregator: google.visualization.data.sum // how to aggregate the pivoted values,
+     },
+     pivotKeyIndexes: [{column: 1}],
+     pivotValueIndex: {column: 4}
+    });
+    
+  var simple_tbl = simple_pivot.getDataTable();
