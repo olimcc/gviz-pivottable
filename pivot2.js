@@ -56,6 +56,9 @@ var gvizpivot = {};
  *            apply to the column.
  *    pivotKeyIndexes {Array.<Object>} [mandatory]
  *        column {number} Columns that should be used as keys.
+ *        modifier {function} [optional] Function to adjust the key
+ *        type {String} [optional] Type of output. Should match output type of
+ *                      modifier function.
  *    pivotValueIndex {Object} [mandatory]
  *        column {number} [mandatory] Column to use as a value.
  *    summaryColumns {Array.<Object>} [optional]
@@ -150,10 +153,13 @@ gvizpivot.PivotAgg.prototype.performPivotConversion_ = function() {
  */
 gvizpivot.PivotAgg.prototype.addKeyColumns_ = function() {
   for (var i = 0; i < this.keyColumns_.length; i++) {
-    var col = this.keyColumns_[i].column;
+    var kc = this.keyColumns_[i],
+        col = kc.column,
+        type = kc.type || this.dataTable_.getColumnType(col),
+        label = this.dataTable_.getColumnType(col);
     this.keyColumnIndexMap_[col] = this.outputTable_.addColumn(
-       this.dataTable_.getColumnType(col),
-       this.dataTable_.getColumnLabel(col));
+       type, label);
+
   }
 };
 
@@ -206,7 +212,7 @@ gvizpivot.PivotAgg.prototype.getDefaultRowExcludingKeyColumns_ = function() {
 };
 
 /**
- * Loops through our base data table and constructs a model of our data.
+ * Loops through our base data table and constructs a representation of our data.
  * The output is stored in this.model.
  *
  * The model stores an array of eligible values for any pivoted
@@ -246,7 +252,14 @@ gvizpivot.PivotAgg.prototype.buildModel_ = function() {
     // generate a row key - based on keyColumns selected by user
     var keyArray = [];
     for (var j = 0; j < this.keyColumns_.length; j++) {
-      keyArray.push(this.dataTable_.getValue(i, this.keyColumns_[j].column));
+
+      var kc = this.keyColumns_[j];
+      var val = this.dataTable_.getValue(i, this.keyColumns_[j].column);
+      // checks if the key should be modifier in anyway before applying.
+      var modVal = (kc.modifier) ? kc.modifier(val) : val;
+      var type = kc.type || null;
+      modVal = (type == 'string') ? String(modVal) : modVal;
+      keyArray.push(modVal);
     }
 
     // add keys (and a corresponding default row) to table if they

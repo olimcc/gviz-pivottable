@@ -1,22 +1,22 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"> 
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"> 
- 
-<html> 
-  <head> 
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8" /> 
-    <title>Pivot Table &#187; </title> 
-    <script type="text/javascript" src="http://www.google.com/jsapi"></script> 
-    <script type="text/javascript"> 
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <title>Pivot Table &#187; </title>
+    <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+    <script type="text/javascript">
       // Load the Visualization API and the table package.
       google.load('visualization', '1', {'packages':['table']});
-    </script>  
-        <script type="text/javascript" src="pivot2.js"></script>   
- 
-<script> 
+    </script>
+        <script type="text/javascript" src="pivot2.js"></script>
+
+<script>
 google.setOnLoadCallback(drawChart);
- 
- 
+
+
 function drawChart() {
   var gviz_table = new google.visualization.DataTable();
   gviz_table.addColumn('date', 'Date', 'date');
@@ -75,12 +75,12 @@ function drawChart() {
   gviz_table.setCell(9, 2, 'Paul');
   gviz_table.setCell(9, 3, 20);
   gviz_table.setCell(9, 4, 11);
-  gviz_table.setCell(10, 0, new Date(2010,9,18));
+  gviz_table.setCell(10, 0, new Date(2011,9,18));
   gviz_table.setCell(10, 1, 'Marketing');
   gviz_table.setCell(10, 2, 'Sarah');
   gviz_table.setCell(10, 3, 4);
   gviz_table.setCell(10, 4, 9);
-  gviz_table.setCell(11, 0, new Date(2010,9,17));
+  gviz_table.setCell(11, 0, new Date(2011,9,17));
   gviz_table.setCell(11, 1, 'Marketing');
   gviz_table.setCell(11, 2, 'Sarah');
   gviz_table.setCell(11, 3, 2);
@@ -92,7 +92,7 @@ function drawChart() {
   gviz_table.setCell(12, 4, 11);
 
 
-  // A simple usage example   
+  // A simple usage example
   var simple_pivot = new gvizpivot.PivotAgg(
     gviz_table,
     {pivotColumnIndex: {
@@ -103,7 +103,7 @@ function drawChart() {
      pivotValueIndex: {column: 4}
     });
   var simple_tbl = simple_pivot.getDataTable();
-  
+
   // A more involved usage example
   var formatter = new google.visualization.BarFormat({width: 120});
   var pivot = new gvizpivot.PivotAgg(
@@ -111,7 +111,7 @@ function drawChart() {
           {pivotColumnIndex: { // the column whose values should be the new columns
               column: 0,
               sortDesc: true, // sort value refers to order new columns will be applied
-              aggregator: google.visualization.data.sum}, 
+              aggregator: google.visualization.data.sum},
            pivotKeyIndexes: [{column: 2}], // the columns who should be the new left most entries - can be multiple
            pivotValueIndex: {column: 3}, // the column who should be the new values - only one
            usePercentTotalValues: false,
@@ -120,19 +120,38 @@ function drawChart() {
              aggregator: google.visualization.data.sum,
              formatters:[formatter]}]});
   var tbl = pivot.getDataTable();
- 
+
+
+  var dateToYear = function(d) {
+    var a = new Date(d);
+    return a.getFullYear();
+  }
+
+  // value modifier example
+  var value_mod_pivot = new gvizpivot.PivotAgg(
+    gviz_table,
+    {pivotColumnIndex: {
+       column: 1,
+       aggregator: google.visualization.data.sum // how to aggregate the pivoted values,
+     },
+     pivotKeyIndexes: [{column: 0, modifier: dateToYear, type: 'string'}],
+     pivotValueIndex: {column: 3}
+    });
+  var value_mod_tbl = value_mod_pivot.getDataTable();
+
+
   tablechart = new google.visualization.ChartWrapper({
     'chartType': 'Table',
     'containerId': 'base_gviztable',
     'dataTable': gviz_table,
   });
-  
+
   tablechart2 = new google.visualization.ChartWrapper({
     'chartType': 'Table',
     'containerId': 'simple_pivot_gviztable',
     'dataTable': simple_tbl,
   });
-  
+
   tablechart3 = new google.visualization.ChartWrapper({
     'chartType': 'Table',
     'containerId': 'user_pivot_gviztable',
@@ -141,31 +160,52 @@ function drawChart() {
       allowHtml: true
     }
   });
-  
+
+  tablechart4 = new google.visualization.ChartWrapper({
+  'chartType': 'Table',
+  'containerId': 'data_value_gviztable',
+  'dataTable': value_mod_tbl,
+  'options': {
+    allowHtml: true
+  }
+});
+
   tablechart.draw();
   tablechart2.draw();
   tablechart3.draw();
-  
-}
- 
-</script> 
- 
- 
-  </head> 
-  <body> 
- <p>Start table</p> 
-<div id="base_gviztable"> 
-</div> 
- 
-<br><br> 
-<p>Pivoted by department (key), on date (column) using expenses (value)</p> 
-<div id="simple_pivot_gviztable"> 
-</div> 
+  tablechart4.draw();
 
-<br><br> 
-<p>Pivoted by user (key), on date (column) using income (value)</p> 
+}
+
+</script>
+
+
+  </head>
+  <body>
+ <p>Start table</p>
+<div id="base_gviztable">
+</div>
+
+<br><br>
+<p>Pivoted by department (key), on date (column) using expenses (value)</p>
+<div id="simple_pivot_gviztable">
+</div>
+
+<br><br>
+<p>Pivoted by user (key), on date (column) using income (value)</p>
 <p>Includes a 'summaryColumn' with a formatter</p>
-<div id="user_pivot_gviztable"> 
-</div> 
-</body> 
+<div id="user_pivot_gviztable">
+</div>
+
+<br><br>
+<p>Pivoted by date (key), on key (column) using income (value)</p>
+<p>Includes a key modifier, to adjust the key to be a year only.</p>
+<div id="data_value_gviztable">
+</div>
+
+</body>
 </html>
+
+
+
+
