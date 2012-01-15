@@ -156,7 +156,7 @@ gvizpivot.PivotAgg.prototype.addKeyColumns_ = function() {
     var kc = this.keyColumns_[i],
         col = kc.column,
         type = kc.type || this.dataTable_.getColumnType(col),
-        label = this.dataTable_.getColumnType(col);
+        label = this.dataTable_.getColumnLabel(col);
     this.keyColumnIndexMap_[col] = this.outputTable_.addColumn(
        type, label);
 
